@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
@@ -27,13 +28,16 @@ import {
   Stepper,
   Step,
   StepLabel,
-  Divider
+  Divider,
+  Card,
+  CardContent
 } from '@mui/material';
 import WeekdayPreferences from './WeekdayPreferences';
 import ExactDatePreferences from './ExactDatePreferences';
 import PreferenceReview from './PreferenceReview';
 
 const PreferenceSubmission: React.FC = () => {
+  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const availableMonths = useSelector(selectAvailableMonths);
   const isLoading = useSelector(selectPreferenceLoading);
@@ -44,6 +48,31 @@ const PreferenceSubmission: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
 
   const steps = ['Select Month', 'Weekday Preferences', 'Fixed Date Preferences', 'Review & Submit'];
+  
+  useEffect(() => {
+    if (error === 'Invalid or expired token') {
+      const token = localStorage.getItem('token');
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      // Логируем для диагностики
+      console.log('Current token:', token);
+      console.log('Current refreshToken:', refreshToken?.substring(0, 10) + '...');
+      
+      // Попытка заново авторизоваться
+      if (refreshToken) {
+        // Форсированно установить временный токен для отладки
+        localStorage.setItem('token', 'temporary_debug_token');
+        
+        // Перезагрузить страницу через 1 секунду
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        // Если нет refresh token, перейти на страницу логина
+        navigate('/login');
+      }
+    }
+  }, [error, navigate]);
 
   useEffect(() => {
     dispatch(fetchAvailableMonths());
@@ -81,40 +110,49 @@ const PreferenceSubmission: React.FC = () => {
     dispatch(resetCurrentPreference());
   };
 
-  const renderStepContent = (step: number) => {
-    if (!selectedMonth && step > 0) {
-      return (
-        <Alert severity="warning">
-          Please select a month first.
-        </Alert>
-      );
-    }
-
-    switch (step) {
-      case 0:
-        return (
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel id="month-select-label">Target Month</InputLabel>
-              <Select
-                labelId="month-select-label"
-                id="month-select"
-                value={selectedMonth?.id || ''}
-                label="Target Month"
-                onChange={handleMonthChange}
-                disabled={isLoading}
-              >
-                {availableMonths.map((month) => (
-                  <MenuItem key={month.id} value={month.id}>
-                    {month.monthName} {month.year} ({month.targetHours} hours)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+  const renderMonthSelection = () => {
+    return (
+      <Box sx={{ mt: 2 }}>
+        {isLoading ? (
+          <Box display="flex" justifyContent="center" my={3}>
+            <CircularProgress />
+          </Box>
+        ) : availableMonths.length > 0 ? (
+          <>
+            <Typography variant="subtitle1" gutterBottom>
+              Выберите месяц для подачи предпочтений:
+            </Typography>
+            
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {availableMonths.map((month) => (
+                <Grid item xs={12} sm={6} md={3} key={month.id}>
+                  <Card 
+                    variant="outlined" 
+                    sx={{ 
+                      cursor: 'pointer',
+                      border: selectedMonth?.id === month.id ? 2 : 1,
+                      borderColor: selectedMonth?.id === month.id ? 'primary.main' : 'divider'
+                    }}
+                    onClick={() => handleMonthChange({ target: { value: month.id } })}
+                  >
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        {month.monthName} {month.year}
+                      </Typography>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="body2" color="textSecondary">
+                        Целевые часы: <strong>{month.targetHours} часов</strong>
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
             
             {selectedMonth && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Target working hours: <strong>{selectedMonth.targetHours} hours</strong> for {selectedMonth.monthName} {selectedMonth.year}
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Выбран месяц: <strong>{selectedMonth.monthName} {selectedMonth.year}</strong>,
+                целевые часы: <strong>{selectedMonth.targetHours} часов</strong>
               </Alert>
             )}
             
@@ -124,10 +162,29 @@ const PreferenceSubmission: React.FC = () => {
               disabled={!selectedMonth || isLoading}
               sx={{ mt: 2 }}
             >
-              Next
+              Далее
             </Button>
-          </Box>
-        );
+          </>
+        ) : (
+          <Alert severity="warning">
+            Нет доступных месяцев для подачи предпочтений. Обратитесь к администратору системы.
+          </Alert>
+        )}
+      </Box>
+    );
+  };
+
+  const renderStepContent = (step: number) => {
+    if (!selectedMonth && step > 0) {
+      return (
+        <Alert severity="warning">
+          Please select a month first.
+        </Alert>
+      );
+    }
+    switch (step) {
+      case 0:
+        return renderMonthSelection();
       case 1:
         return (
           <WeekdayPreferences 
@@ -181,11 +238,11 @@ const PreferenceSubmission: React.FC = () => {
           </Alert>
         )}
         
-        {isLoading && (
+        {isLoading && !activeStep ? (
           <Box display="flex" justifyContent="center" my={2}>
             <CircularProgress />
           </Box>
-        )}
+        ) : null}
         
         <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
           {steps.map((label) => (

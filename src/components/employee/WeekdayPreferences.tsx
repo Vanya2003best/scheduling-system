@@ -5,6 +5,7 @@ import {
   fetchPreference,
   updateWeekdayPreference,
   selectCurrentPreference,
+  setCurrentPreference,
   MonthOption,
   WeekdayPreference as WeekdayPreferenceType
 } from '../../store/slices/preferenceSlice';
@@ -49,10 +50,28 @@ const WeekdayPreferences: React.FC<WeekdayPreferencesProps> = ({
 
   // Handle preference change for a day
   const handlePreferenceChange = (dayOfWeek: string, shiftPreference: string | null) => {
-    dispatch(updateWeekdayPreference({
-      dayOfWeek,
-      shiftPreference
-    }));
+    if (currentPreference) {
+      dispatch(updateWeekdayPreference({
+        dayOfWeek,
+        shiftPreference
+      }));
+    } else {
+      // Если currentPreference не существует, сначала создаем его с базовыми данными
+      const basePreference = {
+        targetMonth: month.monthName,
+        targetYear: month.year,
+        weekdayPreferences: [],
+        exactDatePreferences: []
+      };
+      dispatch(setCurrentPreference(basePreference));
+      // Затем добавляем новое предпочтение
+      setTimeout(() => {
+        dispatch(updateWeekdayPreference({
+          dayOfWeek,
+          shiftPreference
+        }));
+      }, 100);
+    }
   };
 
   // Get current preference for a day

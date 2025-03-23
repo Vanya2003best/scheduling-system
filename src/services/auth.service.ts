@@ -1,4 +1,5 @@
 import api from './api';
+import axios from 'axios';
 
 // Types
 interface LoginCredentials {
@@ -57,22 +58,31 @@ const AuthService = {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
   },
-
-  // Refresh token
   refreshToken: async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
     
-    const response = await api.post<AuthResponse>('/auth/refresh', { refreshToken });
-    return response.data;
-  },
-
-  // Get current user profile
-  getCurrentUser: async () => {
-    const response = await api.get('/profile');
-    return response.data;
+    try {
+      // Используем axios напрямую для избежания циклических зависимостей
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1'}/auth/refresh`, 
+        { refreshToken },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      
+      if (response.data && response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        return response.data;
+      } else {
+        throw new Error('Invalid response from refresh token endpoint');
+      }
+    } catch (error) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      throw error;
+    }
   }
 };
 

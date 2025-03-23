@@ -1,8 +1,9 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../index';
 import axios from 'axios';
+import MockService from '../../services/mock.service';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api/v1';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 
 // Types
 export interface WeekdayPreference {
@@ -51,19 +52,17 @@ const initialState: PreferenceState = {
 };
 
 // Async thunks
+// Найдите thunk fetchAvailableMonths и измените его:
+
 export const fetchAvailableMonths = createAsyncThunk(
   'preference/fetchAvailableMonths',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/preferences/available-months`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch available months');
+      // Вместо реального API используем мок-сервис
+      const response = await MockService.fetchAvailableMonths();
+      return response;
+    } catch (error) {
+      return rejectWithValue('Не удалось загрузить доступные месяцы');
     }
   }
 );
