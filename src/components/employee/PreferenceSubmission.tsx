@@ -53,17 +53,6 @@ const PreferenceSubmission: React.FC = () => {
         setIsLoading(false);
       } catch (fetchError) {
         console.error('Error fetching months:', fetchError);
-        
-        // Try to get the latest month as a fallback
-        try {
-          const latestResponse = await api.get('/api/v1/preferences/latest-month');
-          setAvailableMonths([latestResponse.data]);
-        } catch (latestError) {
-          console.error('Error fetching latest month:', latestError);
-          setError('Unable to load available months. Please contact system administrator.');
-        } finally {
-          setIsLoading(false);
-        }
       }
     };
     

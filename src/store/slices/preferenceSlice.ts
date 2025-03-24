@@ -58,11 +58,15 @@ export const fetchAvailableMonths = createAsyncThunk(
   'preference/fetchAvailableMonths',
   async (_, { rejectWithValue }) => {
     try {
-      // Вместо реального API используем мок-сервис
-      const response = await MockService.fetchAvailableMonths();
-      return response;
-    } catch (error) {
-      return rejectWithValue('Не удалось загрузить доступные месяцы');
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/preferences/available-months`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Не удалось загрузить доступные месяцы');
     }
   }
 );
