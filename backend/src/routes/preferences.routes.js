@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const preferencesController = require('../controllers/preferences.controller');
 const { authenticate } = require('../middleware/auth.middleware');
+const { MonthlyWorkingHours } = require('../models');
 
 // All routes require authentication
 router.use(authenticate);
@@ -12,7 +13,6 @@ router.get('/available-months', preferencesController.getAvailableMonths);
 // Отладочный маршрут для просмотра месяцев
 router.get('/debug-months', async (req, res) => {
     try {
-      const { MonthlyWorkingHours } = require('../models');
       const months = await MonthlyWorkingHours.findAll();
       res.json(months);
     } catch (err) {
@@ -21,12 +21,12 @@ router.get('/debug-months', async (req, res) => {
 });
 
 // Get preferences for a specific user
-router.get('/user/:userId', preferencesController.getPreference);
+router.get('/:userId', preferencesController.getPreferenceByUserId);
 
 // Submit preferences for a specific user
-router.post('/user/:userId', preferencesController.submitPreference);
+router.post('/:userId', preferencesController.submitPreferenceByUserId);
 
 // Update preferences for a specific user
-router.put('/user/:userId', preferencesController.updatePreference);
+router.put('/:userId', preferencesController.updatePreferenceByUserId);
 
 module.exports = router;

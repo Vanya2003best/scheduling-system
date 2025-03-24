@@ -16,12 +16,12 @@ module.exports = (sequelize, DataTypes) => {
       
       SchedulingPreference.hasMany(models.WeekdayPreference, {
         foreignKey: 'preferenceId',
-        as: 'weekdayPreferences'
+        as: 'weekdayPreferences' // Это имя должно совпадать с тем, что используется в контроллере
       });
       
       SchedulingPreference.hasMany(models.ExactDatePreference, {
         foreignKey: 'preferenceId',
-        as: 'exactDatePreferences'
+        as: 'exactDatePreferences' // Это имя должно совпадать с тем, что используется в контроллере
       });
     }
   }

@@ -48,45 +48,54 @@ exports.getAvailableMonths = async (req, res) => {
 /**
  * Get preferences for a specific month
  */
-exports.getPreference = async (req, res) => {
+exports.getPreferenceByUserId = async (req, res) => {
   try {
-    console.log('Request params:', req.params);
-    console.log('User object:', req.user);
-    
     const userId = req.params.userId;
     
-    // Get user's employee ID
-    const employee = await Employee.findOne({ where: { user_id: req.user.id } });
+    console.log('Request for user preferences:', { userId, user: req.user });
+    
+    // Get employee profile
+    const employee = await Employee.findOne({ where: { user_id: userId } });
     
     if (!employee) {
       return res.status(404).json({ error: 'Employee profile not found' });
     }
     
-    // Find monthly settings
-    const monthSettings = await MonthlyWorkingHours.findByPk(monthId);
+    // Get latest available month
+    const latestMonth = await MonthlyWorkingHours.findOne({
+      order: [['year', 'DESC'], ['month_number', 'DESC']]
+    });
     
-    if (!monthSettings) {
-      return res.status(404).json({ error: 'Month not found' });
+    if (!latestMonth) {
+      return res.status(404).json({ error: 'No months defined' });
     }
     
-    // Find existing preference
+    console.log('Found latest month:', latestMonth.month_name, latestMonth.year);
+    
+    // Find preference for this month
     const preference = await SchedulingPreference.findOne({
       where: {
         employee_id: employee.id,
-        target_month: monthSettings.month_name,
-        target_year: monthSettings.year
+        target_month: latestMonth.month_name,
+        target_year: latestMonth.year
       },
       include: [
-        { model: WeekdayPreference, as: 'weekdayPreferences' },
-        { model: ExactDatePreference, as: 'exactDatePreferences' }
+        {
+          model: WeekdayPreference,
+          as: 'weekdayPreferences' // Указываем имя ассоциации
+        },
+        {
+          model: ExactDatePreference,
+          as: 'exactDatePreferences' // Указываем имя ассоциации
+        }
       ]
     });
     
     if (!preference) {
       // Return empty preference template
       return res.status(200).json({
-        targetMonth: monthSettings.month_name,
-        targetYear: monthSettings.year,
+        targetMonth: latestMonth.month_name,
+        targetYear: latestMonth.year,
         weekdayPreferences: [],
         exactDatePreferences: []
       });
@@ -111,34 +120,41 @@ exports.getPreference = async (req, res) => {
     
     res.status(200).json(formattedPreference);
   } catch (error) {
-    console.error('Error fetching preference:', error);
+    console.error('Error fetching preference by user:', error);
     res.status(500).json({ error: 'Failed to fetch preference' });
   }
 };
 
 /**
- * Submit preferences for a specific month
+ * Submit preferences for a specific user
  */
-exports.submitPreference = async (req, res) => {
+exports.submitPreferenceByUserId = async (req, res) => {
   try {
-    console.log('Request params:', req.params);
-    console.log('User object:', req.user);
-    
     const userId = req.params.userId;
-    const { weekdayPreferences, exactDatePreferences } = req.body;
+    const { weekdayPreferences, exactDatePreferences, targetMonth, targetYear } = req.body;
     
-    // Get user's employee ID
-    const employee = await Employee.findOne({ where: { user_id: req.user.id } });
+    // Get employee profile
+    const employee = await Employee.findOne({ where: { user_id: userId } });
     
     if (!employee) {
       return res.status(404).json({ error: 'Employee profile not found' });
     }
     
-    // Find monthly settings
-    const monthSettings = await MonthlyWorkingHours.findByPk(monthId);
+    // If month and year are not provided, use latest month
+    let monthName = targetMonth;
+    let year = targetYear;
     
-    if (!monthSettings) {
-      return res.status(404).json({ error: 'Month not found' });
+    if (!monthName || !year) {
+      const latestMonth = await MonthlyWorkingHours.findOne({
+        order: [['year', 'DESC'], ['month_number', 'DESC']]
+      });
+      
+      if (!latestMonth) {
+        return res.status(404).json({ error: 'No months defined' });
+      }
+      
+      monthName = latestMonth.month_name;
+      year = latestMonth.year;
     }
     
     // Create or update preference in a transaction
@@ -147,8 +163,8 @@ exports.submitPreference = async (req, res) => {
       let preference = await SchedulingPreference.findOne({
         where: {
           employee_id: employee.id,
-          target_month: monthSettings.month_name,
-          target_year: monthSettings.year
+          target_month: monthName,
+          target_year: year
         },
         transaction: t
       });
@@ -160,8 +176,8 @@ exports.submitPreference = async (req, res) => {
         // Create new preference
         preference = await SchedulingPreference.create({
           employee_id: employee.id,
-          target_month: monthSettings.month_name,
-          target_year: monthSettings.year,
+          target_month: monthName,
+          target_year: year,
           submission_timestamp: new Date()
         }, { transaction: t });
       }
@@ -208,22 +224,22 @@ exports.submitPreference = async (req, res) => {
     // Fetch complete preference with associations
     const completePreference = await SchedulingPreference.findByPk(result.id, {
       include: [
-        { model: WeekdayPreference, as: 'weekdayPreferences' },
-        { model: ExactDatePreference, as: 'exactDatePreferences' }
+        { model: WeekdayPreference },
+        { model: ExactDatePreference }
       ]
     });
     
-    // Затем нужно правильно обращаться к свойствам с использованием алиасов
+    // Format the response
     const formattedPreference = {
       id: completePreference.id,
       employeeId: completePreference.employee_id,
       targetMonth: completePreference.target_month,
       targetYear: completePreference.target_year,
-      weekdayPreferences: completePreference.weekdayPreferences.map(wp => ({
+      weekdayPreferences: completePreference.WeekdayPreferences.map(wp => ({
         dayOfWeek: wp.day_of_week,
         shiftPreference: wp.shift_preference
       })),
-      exactDatePreferences: completePreference.exactDatePreferences.map(edp => ({
+      exactDatePreferences: completePreference.ExactDatePreferences.map(edp => ({
         exactDate: edp.exact_date.toISOString().split('T')[0],
         startTime: edp.start_time,
         endTime: edp.end_time
@@ -232,17 +248,17 @@ exports.submitPreference = async (req, res) => {
     
     res.status(200).json(formattedPreference);
   } catch (error) {
-    console.error('Error submitting preference:', error);
+    console.error('Error submitting preference by user:', error);
     res.status(500).json({ error: 'Failed to submit preference' });
   }
 };
 
 /**
- * Update preferences for a specific month
+ * Update preferences for a specific user
  */
-exports.updatePreference = async (req, res) => {
-  // The implementation is very similar to submitPreference
-  // In fact, submitPreference already handles both creation and update
+exports.updatePreferenceByUserId = async (req, res) => {
+  // The implementation is very similar to submitPreferenceByUserId
+  // In fact, submitPreferenceByUserId already handles both creation and update
   // So we can just call that function
-  return this.submitPreference(req, res);
+  return this.submitPreferenceByUserId(req, res);
 };
