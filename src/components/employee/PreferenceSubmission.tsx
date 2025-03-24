@@ -1,18 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { MONTH_NAMES } from '../../utils/constants';
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch } from '../../store';
-import {
-  fetchAvailableMonths,
-  selectAvailableMonths,
-  selectPreferenceLoading,
-  selectPreferenceError,
-  selectPreferenceSuccess,
-  resetCurrentPreference,
-  clearSuccess,
-  MonthOption
-} from '../../store/slices/preferenceSlice';
+import { api } from '../../utils/api';
 import { 
   Box, 
   Typography, 
@@ -20,10 +9,6 @@ import {
   Paper, 
   Grid, 
   Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
   Alert, 
   CircularProgress,
   Stepper,
@@ -37,13 +22,22 @@ import WeekdayPreferences from './WeekdayPreferences';
 import ExactDatePreferences from './ExactDatePreferences';
 import PreferenceReview from './PreferenceReview';
 
+interface MonthOption {
+  id: number;
+  monthName: string;
+  monthNumber: number;
+  year: number;
+  isEditable: boolean;
+  targetHours: number;
+}
+
 const PreferenceSubmission: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  const availableMonths = useSelector(selectAvailableMonths);
-  const isLoading = useSelector(selectPreferenceLoading);
-  const error = useSelector(selectPreferenceError);
-  const success = useSelector(selectPreferenceSuccess);
+
+  const [availableMonths, setAvailableMonths] = useState<MonthOption[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const [selectedMonth, setSelectedMonth] = useState<MonthOption | null>(null);
   const [activeStep, setActiveStep] = useState(0);
@@ -51,51 +45,51 @@ const PreferenceSubmission: React.FC = () => {
   const steps = ['Select Month', 'Weekday Preferences', 'Fixed Date Preferences', 'Review & Submit'];
   
   useEffect(() => {
+    const fetchMonths = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get('/api/v1/preferences/available-months');
+        setAvailableMonths(response.data);
+        setIsLoading(false);
+      } catch (fetchError) {
+        console.error('Error fetching months:', fetchError);
+        
+        // Try to get the latest month as a fallback
+        try {
+          const latestResponse = await api.get('/api/v1/preferences/latest-month');
+          setAvailableMonths([latestResponse.data]);
+        } catch (latestError) {
+          console.error('Error fetching latest month:', latestError);
+          setError('Unable to load available months. Please contact system administrator.');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    fetchMonths();
+  }, []);
+
+  useEffect(() => {
+    // Token expiration handling
     if (error === 'Invalid or expired token') {
       const token = localStorage.getItem('token');
       const refreshToken = localStorage.getItem('refreshToken');
       
-      // Логируем для диагностики
       console.log('Current token:', token);
       console.log('Current refreshToken:', refreshToken?.substring(0, 10) + '...');
       
-      // Попытка заново авторизоваться
       if (refreshToken) {
-        // Форсированно установить временный токен для отладки
         localStorage.setItem('token', 'temporary_debug_token');
         
-        // Перезагрузить страницу через 1 секунду
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       } else {
-        // Если нет refresh token, перейти на страницу логина
         navigate('/login');
       }
     }
   }, [error, navigate]);
-
-  useEffect(() => {
-    dispatch(fetchAvailableMonths());
-  }, [dispatch]);
-
-  useEffect(() => {
-    // Reset form if successful submission
-    if (success) {
-      setTimeout(() => {
-        dispatch(clearSuccess());
-        setActiveStep(0);
-        setSelectedMonth(null);
-        dispatch(resetCurrentPreference());
-      }, 3000);
-    }
-  }, [success, dispatch]);
-
-  const handleMonthChange = (event: any) => {
-    const selectedId = event.target.value;
-    const month = availableMonths.find(m => m.id === selectedId) || null;
-    setSelectedMonth(month);
-  };
 
   const handleNext = () => {
     setActiveStep((prevStep) => prevStep + 1);
@@ -108,195 +102,130 @@ const PreferenceSubmission: React.FC = () => {
   const handleReset = () => {
     setActiveStep(0);
     setSelectedMonth(null);
-    dispatch(resetCurrentPreference());
   };
 
-  const renderMonthSelection = () => {
-    return (
-      <Box sx={{ mt: 2 }}>
-        {isLoading ? (
-          <Box display="flex" justifyContent="center" my={3}>
-            <CircularProgress />
-          </Box>
-        ) : availableMonths.length > 0 ? (
-          <>
-            <Typography variant="subtitle1" gutterBottom>
-              Выберите месяц для подачи предпочтений:
-            </Typography>
-            
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              {availableMonths.map((month) => (
-                <Grid item xs={12} sm={6} md={3} key={month.id}>
-                  <Card 
-                    variant="outlined" 
-                    sx={{ 
-                      cursor: 'pointer',
-                      border: selectedMonth?.id === month.id ? 2 : 1,
-                      borderColor: selectedMonth?.id === month.id ? 'primary.main' : 'divider'
-                    }}
-                    onClick={() => handleMonthChange({ target: { value: month.id } })}
-                  >
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        {month.monthName} {month.year}
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Typography variant="body2" color="textSecondary">
-                        Целевые часы: <strong>{month.targetHours} часов</strong>
-                      </Typography>
-                    </CardContent>
-                  </Card>
+  const renderStepContent = (step: number) => {
+    const determineAvailableMonths = () => {
+      const today = new Date();
+      const isAfter20th = today.getDate() > 20;
+      const months = [];
+      
+      let startIndex = isAfter20th ? 1 : 0;
+      
+      for (let i = 0; i < 4; i++) {
+        const monthDate = new Date(today.getFullYear(), today.getMonth() + startIndex + i, 1);
+        
+        const month = {
+          id: i,
+          monthName: MONTH_NAMES[monthDate.getMonth()],
+          monthNumber: monthDate.getMonth() + 1,
+          year: monthDate.getFullYear(),
+          isEditable: !(isAfter20th && i === 0),
+          targetHours: 168
+        };
+        
+        months.push(month);
+      }
+      
+      return months;
+    };
+
+    switch (step) {
+      case 0:
+        return (
+          <Box sx={{ mt: 2 }}>
+            {isLoading ? (
+              <Box display="flex" justifyContent="center" my={3}>
+                <CircularProgress />
+              </Box>
+            ) : availableMonths.length > 0 ? (
+              <>
+                <Typography variant="subtitle1" gutterBottom>
+                  Select Month for Preferences:
+                </Typography>
+                
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  {determineAvailableMonths().map((month) => (
+                    <Grid item xs={12} sm={6} md={3} key={month.id}>
+                      <Card 
+                        variant="outlined" 
+                        sx={{ 
+                          cursor: month.isEditable ? 'pointer' : 'not-allowed',
+                          border: selectedMonth?.id === month.id ? 2 : 1,
+                          borderColor: selectedMonth?.id === month.id ? 'primary.main' : 'divider',
+                          opacity: month.isEditable ? 1 : 0.5
+                        }}
+                        onClick={() => {
+                          if (month.isEditable) {
+                            setSelectedMonth(month);
+                            handleNext();
+                          }
+                        }}
+                      >
+                        <CardContent>
+                          <Typography variant="h6" gutterBottom>
+                            {month.monthName} {month.year}
+                          </Typography>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="body2" color="textSecondary">
+                            Target Hours: <strong>{month.targetHours} hours</strong>
+                          </Typography>
+                          {!month.isEditable && (
+                            <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                              Editing Closed
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
-            
-            {selectedMonth && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Выбран месяц: <strong>{selectedMonth.monthName} {selectedMonth.year}</strong>,
-                целевые часы: <strong>{selectedMonth.targetHours} часов</strong>
+                
+                {selectedMonth && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    Selected Month: <strong>{selectedMonth.monthName} {selectedMonth.year}</strong>,
+                    Target Hours: <strong>{selectedMonth.targetHours} hours</strong>
+                  </Alert>
+                )}
+              </>
+            ) : (
+              <Alert severity="warning">
+                No available months for preference submission. Please contact system administrator.
               </Alert>
             )}
-            
-            <Button 
-              variant="contained" 
-              onClick={handleNext}
-              disabled={!selectedMonth || isLoading}
-              sx={{ mt: 2 }}
-            >
-              Далее
-            </Button>
-          </>
-        ) : (
-          <Alert severity="warning">
-            Нет доступных месяцев для подачи предпочтений. Обратитесь к администратору системы.
-          </Alert>
-        )}
-      </Box>
-    );
-  };
-  const renderStepContent = (step: number) => {
-  const determineAvailableMonths = () => {
-    const today = new Date();
-    const isAfter20th = today.getDate() > 20;
-    const months = [];
-    
-    // Начальный месяц зависит от текущей даты
-    let startIndex = isAfter20th ? 1 : 0;
-    
-    for (let i = 0; i < 4; i++) {
-      const monthDate = new Date(today.getFullYear(), today.getMonth() + startIndex + i, 1);
-      
-      const month = {
-        id: i,
-        monthName: MONTH_NAMES[monthDate.getMonth()],
-        monthNumber: monthDate.getMonth() + 1,
-        year: monthDate.getFullYear(),
-        isEditable: !(isAfter20th && i === 0), // Блокировка текущего месяца после 20-го числа
-        targetHours: 168 // Целевые часы (можно динамически получать из бэкенда)
-      };
-      
-      months.push(month);
+          </Box>
+        );
+      case 1:
+        return selectedMonth && (
+          <WeekdayPreferences 
+            month={selectedMonth}
+            onBack={handleBack}
+            onNext={handleNext}
+            isLoading={isLoading}
+          />
+        );
+      case 2:
+        return selectedMonth && (
+          <ExactDatePreferences 
+            month={selectedMonth}
+            onBack={handleBack} 
+            onNext={handleNext}
+            isLoading={isLoading}
+          />
+        );
+      case 3:
+        return selectedMonth && (
+          <PreferenceReview
+            month={selectedMonth}
+            onBack={handleBack}
+            onReset={handleReset}
+            isLoading={isLoading}
+          />
+        );
+      default:
+        return <div>Unknown step</div>;
     }
-    
-    return months;
   };
-
-  switch (step) {
-    case 0:
-      return (
-        <Box sx={{ mt: 2 }}>
-          {isLoading ? (
-            <Box display="flex" justifyContent="center" my={3}>
-              <CircularProgress />
-            </Box>
-          ) : availableMonths.length > 0 ? (
-            <>
-              <Typography variant="subtitle1" gutterBottom>
-                Выберите месяц для подачи предпочтений:
-              </Typography>
-              
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                {determineAvailableMonths().map((month) => (
-                  <Grid item xs={12} sm={6} md={3} key={month.id}>
-                    <Card 
-                      variant="outlined" 
-                      sx={{ 
-                        cursor: month.isEditable ? 'pointer' : 'not-allowed',
-                        border: selectedMonth?.id === month.id ? 2 : 1,
-                        borderColor: selectedMonth?.id === month.id ? 'primary.main' : 'divider',
-                        opacity: month.isEditable ? 1 : 0.5
-                      }}
-                      onClick={() => {
-                        if (month.isEditable) {
-                          setSelectedMonth(month);
-                          handleNext();
-                        }
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          {month.monthName} {month.year}
-                        </Typography>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="body2" color="textSecondary">
-                          Целевые часы: <strong>{month.targetHours} часов</strong>
-                        </Typography>
-                        {!month.isEditable && (
-                          <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                            Редактирование закрыто
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-              
-              {selectedMonth && (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  Выбран месяц: <strong>{selectedMonth.monthName} {selectedMonth.year}</strong>,
-                  целевые часы: <strong>{selectedMonth.targetHours} часов</strong>
-                </Alert>
-              )}
-            </>
-          ) : (
-            <Alert severity="warning">
-              Нет доступных месяцев для подачи предпочтений. Обратитесь к администратору системы.
-            </Alert>
-          )}
-        </Box>
-      );
-    case 1:
-      return selectedMonth && (
-        <WeekdayPreferences 
-          month={selectedMonth}
-          onBack={handleBack}
-          onNext={handleNext}
-          isLoading={isLoading}
-        />
-      );
-    case 2:
-      return selectedMonth && (
-        <ExactDatePreferences 
-          month={selectedMonth}
-          onBack={handleBack} 
-          onNext={handleNext}
-          isLoading={isLoading}
-        />
-      );
-    case 3:
-      return selectedMonth && (
-        <PreferenceReview
-          month={selectedMonth}
-          onBack={handleBack}
-          onReset={handleReset}
-          isLoading={isLoading}
-        />
-      );
-    default:
-      return <div>Unknown step</div>;
-  }
-};
 
   return (
     <Container maxWidth="lg">
