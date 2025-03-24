@@ -1,18 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
-const { authenticate } = require('../middleware/auth.middleware');
 
-// Register new user
+// Существующие маршруты
 router.post('/register', authController.register);
-
-// Login user
 router.post('/login', authController.login);
-
-// Refresh token
 router.post('/refresh', authController.refreshToken);
+router.post('/logout', authController.logout);
 
-// Logout user (protected route)
-router.post('/logout', authenticate, authController.logout);
+// Новые маршруты для сброса пароля
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 
 module.exports = router;

@@ -3,22 +3,52 @@ const bcrypt = require('bcrypt');
 
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // Define associations here
       User.hasOne(models.Employee, {
         foreignKey: 'userId',
         as: 'employee'
       });
     }
 
-    // Method to check if password matches
+    // Метод для проверки пароля
     async comparePassword(candidatePassword) {
-      return await bcrypt.compare(candidatePassword, this.password);
+      const storedPasswordHash = await this.reload({ attributes: ['password_hash'] })
+        .then(user => user.get('password_hash'));
+    
+      console.log('Extensive Password Debugging:', {
+        candidatePassword,
+        storedPasswordHash,
+        candidateType: typeof candidatePassword,
+        hashType: typeof storedPasswordHash,
+        candidateLength: candidatePassword.length,
+        hashLength: storedPasswordHash.length
+      });
+    
+      try {
+        const result = await bcrypt.compare(candidatePassword, storedPasswordHash);
+        
+        console.log('Bcrypt Detailed Compare:', {
+          match: result,
+          candidatePassword,
+          storedPasswordHash
+        });
+    
+        return result;
+      } catch (error) {
+        console.error('Bcrypt Compare Catastrophic Error:', {
+          message: error.message,
+          stack: error.stack,
+          candidatePassword,
+          storedPasswordHash
+        });
+        return false;
+      }
+    }
+    // Метод для безопасного обновления пароля
+    async setPassword(newPassword) {
+      const salt = await bcrypt.genSalt(10);
+      this.password_hash = await bcrypt.hash(newPassword, salt);
+      return this;
     }
   }
 
@@ -26,29 +56,54 @@ module.exports = (sequelize, DataTypes) => {
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: {
+        msg: 'Пользователь с таким email уже существует'
+      },
       validate: {
-        isEmail: true
+        isEmail: {
+          msg: 'Некорректный формат email'
+        },
+        notNull: {
+          msg: 'Email обязателен'
+        }
       }
     },
-    password: {
+    password_hash: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notNull: {
+          msg: 'Пароль обязателен'
+        },
+        len: {
+          args: [8, 255],
+          msg: 'Пароль должен содержать минимум 8 символов'
+        }
+      }
     },
     role: {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'employee',
       validate: {
-        isIn: [['employee', 'admin', 'manager']]
+        isIn: {
+          args: [['employee', 'admin', 'manager']],
+          msg: 'Недопустимая роль пользователя'
+        }
       }
     },
-    lastLogin: {
-      type: DataTypes.DATE
+    last_login: {
+      type: DataTypes.DATE,
+      allowNull: true
     },
-    isActive: {
+    is_active: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true
+      defaultValue: true,
+      validate: {
+        isBoolean: {
+          msg: 'is_active должно быть булевым значением'
+        }
+      }
     }
   }, {
     sequelize,
@@ -57,19 +112,27 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true,
     underscored: true,
     hooks: {
-      beforeCreate: async (user) => {
-        if (user.password) {
+      beforeCreate: async (user, options) => {
+        // Проверяем, что пароль еще не захеширован
+        if (user.password_hash && !user.password_hash.startsWith('$2b$')) {
           const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
+          user.password_hash = await bcrypt.hash(user.password_hash, salt);
         }
       },
-      beforeUpdate: async (user) => {
-        if (user.changed('password')) {
+      beforeUpdate: async (user, options) => {
+        // Хешируем пароль только если он был изменен и не захеширован
+        if (user.changed('password_hash') && !user.password_hash.startsWith('$2b$')) {
           const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
+          user.password_hash = await bcrypt.hash(user.password_hash, salt);
         }
       }
-    }
+    },
+    // Дополнительные настройки для безопасности
+    defaultScope: {
+      attributes: { 
+        exclude: ['password_hash'] 
+      }
+    },
   });
 
   return User;

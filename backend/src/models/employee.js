@@ -2,57 +2,53 @@ const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Employee extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // Define associations here
       Employee.belongsTo(models.User, {
-        foreignKey: 'userId',
+        foreignKey: 'user_id', // Именно snake_case
         as: 'user'
-      });
-
-      Employee.hasMany(models.SchedulingPreference, {
-        foreignKey: 'employeeId',
-        as: 'preferences'
-      });
-
-      Employee.hasMany(models.ScheduleEntry, {
-        foreignKey: 'employeeId',
-        as: 'scheduleEntries'
       });
     }
   }
 
   Employee.init({
-    userId: {
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      unique: true,
-      references: {
-        model: 'users',
-        key: 'id'
+      validate: {
+        notNull: {
+          msg: 'User ID обязателен'
+        }
       }
     },
-    firstName: {
+    first_name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notNull: {
+          msg: 'Имя обязательно'
+        }
+      }
     },
-    lastName: {
+    last_name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notNull: {
+          msg: 'Фамилия обязательна'
+        }
+      }
     },
     position: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true
     },
     department: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
+      allowNull: true
     },
-    hireDate: {
-      type: DataTypes.DATE
+    hire_date: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,
