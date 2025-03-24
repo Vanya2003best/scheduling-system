@@ -50,7 +50,10 @@ exports.getAvailableMonths = async (req, res) => {
  */
 exports.getPreference = async (req, res) => {
   try {
-    const monthId = req.params.monthId;
+    console.log('Request params:', req.params);
+    console.log('User object:', req.user);
+    
+    const userId = req.params.userId;
     
     // Get user's employee ID
     const employee = await Employee.findOne({ where: { user_id: req.user.id } });
@@ -118,7 +121,10 @@ exports.getPreference = async (req, res) => {
  */
 exports.submitPreference = async (req, res) => {
   try {
-    const monthId = req.params.monthId;
+    console.log('Request params:', req.params);
+    console.log('User object:', req.user);
+    
+    const userId = req.params.userId;
     const { weekdayPreferences, exactDatePreferences } = req.body;
     
     // Get user's employee ID
