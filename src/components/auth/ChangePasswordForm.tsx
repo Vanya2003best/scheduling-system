@@ -50,11 +50,12 @@ const ChangePasswordForm: React.FC = () => {
       setSuccess(null);
 
       try {
+        // Убедиться, что передаются корректные параметры
         await AuthService.changePassword({
           currentPassword: values.currentPassword,
           newPassword: values.newPassword
         });
-
+        
         setSuccess('Пароль успешно изменен');
         
         setTimeout(() => {
@@ -63,6 +64,7 @@ const ChangePasswordForm: React.FC = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.message || 
+          err.response?.data?.error || 
           'Не удалось изменить пароль'
         );
       } finally {

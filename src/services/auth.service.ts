@@ -92,10 +92,10 @@ const AuthService = {
     newPassword: string 
   }) => {
     try {
-      const response = await api.post('/auth/change-password', data);
+      // Изменить на PUT и на правильный URL
+      const response = await api.put('/users/password', data);
       return response.data;
     } catch (error: any) {
-      // Обработка ошибок
       throw error;
     }
   }

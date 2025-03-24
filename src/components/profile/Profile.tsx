@@ -6,6 +6,7 @@ import {
   selectAuthLoading,
   selectAuthError,
   updateUserProfile,
+  changeUserPassword,
   clearError
 } from '../../store/slices/authSlice';
 import { 
@@ -128,14 +129,20 @@ const Profile: React.FC = () => {
   // Сохранение изменений профиля
   const handleSaveProfile = async () => {
     if (!user) return;
-
+  
     try {
-      // Здесь бы был вызов асинхронного действия для обновления профиля через API
-      // dispatch(updateUserProfile(profileForm));
+      // Вызов асинхронного действия для обновления профиля через API
+      const result = await dispatch(updateUserProfile(profileForm)).unwrap();
       
-      // Для демонстрации:
+      // Показываем сообщение об успехе
       setSuccessMessage('Профиль успешно обновлен');
     } catch (err) {
+      // Определяем сообщение об ошибке из полученного ответа
+      const errorMsg = typeof err === 'object' && err !== null 
+      ? ((err as any).message || 'Ошибка при обновлении профиля')
+        : 'Ошибка при обновлении профиля';
+      
+      // Можно использовать встроенный механизм обработки ошибок Redux
       console.error('Ошибка при обновлении профиля', err);
     }
   };
@@ -154,21 +161,29 @@ const Profile: React.FC = () => {
     }
 
     try {
-      // Здесь бы был вызов API для изменения пароля
-      // await AuthService.changePassword(passwordForm);
-      
-      // Сброс формы и отображение успеха
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setSuccessMessage('Пароль успешно изменен');
-    } catch (err) {
-      setPasswordError('Ошибка при изменении пароля');
-      console.error('Ошибка при изменении пароля', err);
-    }
-  };
+        // Используем Redux-thunk
+        const result = await dispatch(changeUserPassword({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })).unwrap();
+        
+        // Сброс формы и показ сообщения об успехе
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        setSuccessMessage('Пароль успешно изменен');
+      } catch (err) {
+        // Определяем сообщение об ошибке из полученного ответа
+        const errorMsg = typeof err === 'object' && err !== null 
+        ? ((err as any).message || 'Ошибка при изменении пароля') 
+          : 'Ошибка при изменении пароля';
+        
+        setPasswordError(errorMsg);
+        console.error('Ошибка при изменении пароля', err);
+      }
+    };
 
   if (!user) {
     return (
