@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const preferencesController = require('../controllers/preferences.controller');
-const { authenticate } = require('../middleware/auth.middleware');
-const { MonthlyWorkingHours } = require('../models');
+const { authenticate, isSelfOrAdmin } = require('../middleware/auth.middleware');
 
 // All routes require authentication
 router.use(authenticate);
@@ -10,23 +9,19 @@ router.use(authenticate);
 // Get available months for preference submission
 router.get('/available-months', preferencesController.getAvailableMonths);
 
-// Отладочный маршрут для просмотра месяцев
-router.get('/debug-months', async (req, res) => {
-    try {
-      const months = await MonthlyWorkingHours.findAll();
-      res.json(months);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-});
+// Get preferences for a specific month
+router.get('/:monthId', preferencesController.getPreference);
 
-// Get preferences for a specific user
-router.get('/:userId', preferencesController.getPreferenceByUserId);
+// Submit preferences for a specific month
+router.post('/:monthId', preferencesController.submitPreference);
 
-// Submit preferences for a specific user
-router.post('/:userId', preferencesController.submitPreferenceByUserId);
+// Update preferences for a specific month
+router.put('/:monthId', preferencesController.updatePreference);
 
-// Update preferences for a specific user
-router.put('/:userId', preferencesController.updatePreferenceByUserId);
+// Get preferences for a specific user (added)
+router.get('/user/:userId', isSelfOrAdmin, preferencesController.getPreferenceByUserId);
+
+// Submit preferences for a specific user (added)
+router.post('/user/:userId', isSelfOrAdmin, preferencesController.submitPreferenceByUserId);
 
 module.exports = router;
