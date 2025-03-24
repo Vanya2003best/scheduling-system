@@ -3,12 +3,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
-const userRoutes = require('./routes/userRoutes'); // adjust path as needed
 // Create Express app
 const app = express();
 
 // Middleware
-app.use('/api/v1', userRoutes);
 app.use(helmet()); // Security headers
 app.use(morgan('dev')); // Request logging
 app.use(cors({
@@ -24,6 +22,7 @@ app.use('/api/v1/profile', require('./routes/profile.routes'));
 app.use('/api/v1/preferences', require('./routes/preferences.routes'));
 app.use('/api/v1/schedules', require('./routes/schedules.routes'));
 app.use('/api/v1/notifications', require('./routes/notifications.routes'));
+app.use('/api/v1/users', require('./routes/users.routes'));
 
 // Admin routes
 app.use('/api/v1/admin', require('./routes/admin.routes'));

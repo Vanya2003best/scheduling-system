@@ -1,16 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/user.controller');
-const authMiddleware = require('../middleware/authMiddleware');
+const authController = require('../controllers/auth.controller');
+const { authenticate } = require('../middleware/auth.middleware');
 
-// Существующие маршруты
-router.post('/login', userController.login);
-router.post('/register', userController.register);
-router.post('/refresh', userController.refreshToken);
-router.post('/logout', userController.logout);
-router.post('/forgot-password', userController.forgotPassword);
-router.post('/reset-password', userController.resetPassword);
-router.put('/users/password', authMiddleware, userController.changePassword);
-router.put('/users/profile', authMiddleware, userController.updateProfile);
+
+// Добавьте эти маршруты
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
+// Register new user
+router.post('/register', authController.register);
+
+// Login user
+router.post('/login', authController.login);
+
+// Refresh token
+router.post('/refresh', authController.refreshToken);
+
+// Logout user (protected route)
+router.post('/logout', authenticate, authController.logout);
 
 module.exports = router;

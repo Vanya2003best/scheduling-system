@@ -1,14 +1,13 @@
-// src/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
 // JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Should be in env in production
 
 /**
  * Middleware to check if user is authenticated
  */
-const authenticate = async (req, res, next) => {
+exports.authenticate = async (req, res, next) => {
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
@@ -50,11 +49,10 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-// Экспортируем как middleware по умолчанию
-module.exports = authenticate;
-
-// Также можно экспортировать дополнительные middleware
-module.exports.isAdmin = (req, res, next) => {
+/**
+ * Middleware to check if user has admin role
+ */
+exports.isAdmin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
@@ -62,7 +60,11 @@ module.exports.isAdmin = (req, res, next) => {
   }
 };
 
-module.exports.isSelfOrAdmin = (req, res, next) => {
+/**
+ * Middleware to check if user is accessing their own data or is an admin
+ */
+exports.isSelfOrAdmin = (req, res, next) => {
+  // The userId parameter is expected in the route params
   const userId = parseInt(req.params.userId);
   
   if (
