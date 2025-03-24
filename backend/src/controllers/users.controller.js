@@ -9,14 +9,28 @@ exports.updatePassword = async (req, res) => {
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
 
-    // Находим пользователя
-    const user = await User.findByPk(userId);
+    // Находим пользователя с полным набором атрибутов
+    const user = await User.findByPk(userId, {
+      attributes: { include: ['password_hash'] } // Явно запрашиваем поле password_hash
+    });
     
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
-    // ВАЖНО: В модели используется password_hash, а не password
+    // Логируем доступные поля пользователя для отладки
+    console.log('User object keys:', Object.keys(user.dataValues));
+    console.log('Password field check:', {
+      hasPasswordField: user.password !== undefined,
+      hasPasswordHashField: user.password_hash !== undefined
+    });
+
+    // Проверяем наличие пароля
+    if (!user.password_hash) {
+      console.log('No password_hash found for user:', userId);
+      return res.status(400).json({ error: 'Не удалось получить текущий пароль пользователя' });
+    }
+
     // Проверяем текущий пароль
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
     
