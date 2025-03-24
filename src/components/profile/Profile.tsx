@@ -28,6 +28,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 import useAuth from '../../hooks/useAuth';
+import UserService from '../../services/user.service';
 
 interface TabPanelProps {
   children?: React.ReactNode;

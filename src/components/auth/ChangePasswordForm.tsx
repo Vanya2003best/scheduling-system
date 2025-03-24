@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import UserService from '../../services/user.service';
 import AuthService from '../../services/auth.service';
 
 // Определим интерфейс для формы
@@ -50,8 +51,8 @@ const ChangePasswordForm: React.FC = () => {
       setSuccess(null);
 
       try {
-        // Убедиться, что передаются корректные параметры
-        await AuthService.changePassword({
+        // Используем UserService для смены пароля
+        await UserService.changePassword({
           currentPassword: values.currentPassword,
           newPassword: values.newPassword
         });

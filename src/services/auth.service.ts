@@ -85,20 +85,6 @@ const AuthService = {
       throw error;
     }
   },
-
-  // Добавлен метод changePassword внутри объекта AuthService
-  changePassword: async (data: { 
-    currentPassword: string, 
-    newPassword: string 
-  }) => {
-    try {
-      // Изменить на PUT и на правильный URL
-      const response = await api.put('/users/password', data);
-      return response.data;
-    } catch (error: any) {
-      throw error;
-    }
-  }
 };
 
 export default AuthService;
