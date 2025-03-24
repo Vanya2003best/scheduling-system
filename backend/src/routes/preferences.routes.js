@@ -6,8 +6,7 @@ const { authenticate } = require('../middleware/auth.middleware');
 // All routes require authentication
 router.use(authenticate);
 
-// Get available months for preference submission
-router.get('/available-months', preferencesController.getAvailableMonths);
+router.get('/available-months', authenticate, preferencesController.getAvailableMonths);
 
 // Get the latest available month
 router.get('/latest-month', preferencesController.getLatestMonth);

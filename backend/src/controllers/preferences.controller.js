@@ -13,23 +13,24 @@ const {
  */
 exports.getAvailableMonths = async (req, res) => {
   try {
-    // Get user's employee ID
     const employee = await Employee.findOne({ where: { user_id: req.user.id } });
     
     if (!employee) {
       return res.status(404).json({ error: 'Employee profile not found' });
     }
     
-    // Get all available months 
+    const currentDate = new Date();
     const availableMonths = await MonthlyWorkingHours.findAll({
-      order: [['year', 'DESC'], ['month_number', 'ASC']]
+      where: {
+        year: currentDate.getFullYear(),
+        month_number: {
+          [Op.gte]: currentDate.getMonth() + 1
+        }
+      },
+      order: [['year', 'ASC'], ['month_number', 'ASC']],
+      limit: 4
     });
     
-    if (!availableMonths || availableMonths.length === 0) {
-      return res.status(404).json({ error: 'No available months found' });
-    }
-    
-    // Map to expected format
     const monthsData = availableMonths.map(month => ({
       id: month.id,
       monthName: month.month_name,
