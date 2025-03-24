@@ -39,31 +39,6 @@ const initialState: AuthState = {
   successMessage: null // Инициализация нового поля
 };
 
-// Async thunks
-export const updateUserProfile = createAsyncThunk(
-  'auth/updateUserProfile',
-  async (userData: UserProfileData, { rejectWithValue }) => {
-    try {
-      const response = await UserService.updateProfile(userData);
-      return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Не удалось обновить профиль');
-    }
-  }
-);
-
-export const changeUserPassword = createAsyncThunk(
-  'auth/changeUserPassword',
-  async (passwordData: { currentPassword: string; newPassword: string }, { rejectWithValue }) => {
-    try {
-      const response = await UserService.changePassword(passwordData);
-      return response.message || 'Пароль успешно изменен';
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Не удалось изменить пароль');
-    }
-  }
-);
-
 // The auth slice
 const authSlice = createSlice({
   name: 'auth',
@@ -95,41 +70,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // updateUserProfile
-      .addCase(updateUserProfile.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-        state.successMessage = null;
-      })
-      .addCase(updateUserProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        if (state.user && action.payload) {
-          state.user = {
-            ...state.user,
-            ...action.payload
-          };
-        }
-        state.successMessage = 'Профиль успешно обновлен';
-      })
-      .addCase(updateUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload ? String(action.payload) : 'Произошла ошибка при обновлении профиля';
-      })
-      
-      // changeUserPassword
-      .addCase(changeUserPassword.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-        state.successMessage = null;
-      })
-      .addCase(changeUserPassword.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.successMessage = action.payload ? String(action.payload) : 'Пароль успешно изменен';
-      })
-      .addCase(changeUserPassword.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload ? String(action.payload) : 'Не удалось изменить пароль';
-      });
   }
 });
 

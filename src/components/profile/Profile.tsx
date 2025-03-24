@@ -5,8 +5,6 @@ import {
   selectCurrentUser,
   selectAuthLoading,
   selectAuthError,
-  updateUserProfile,
-  changeUserPassword,
   clearError
 } from '../../store/slices/authSlice';
 import { 
@@ -132,21 +130,26 @@ const Profile: React.FC = () => {
     if (!user) return;
   
     try {
-      // Вызов асинхронного действия для обновления профиля через API
-      const result = await dispatch(updateUserProfile(profileForm)).unwrap();
+      // Используем UserService для обновления профиля
+      const result = await UserService.updateProfile({
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+        position: profileForm.position,
+        department: profileForm.department
+      });
       
       // Показываем сообщение об успехе
       setSuccessMessage('Профиль успешно обновлен');
     } catch (err) {
-      // Определяем сообщение об ошибке из полученного ответа
       const errorMsg = typeof err === 'object' && err !== null 
-      ? ((err as any).message || 'Ошибка при обновлении профиля')
+        ? ((err as any).message || 'Ошибка при обновлении профиля')
         : 'Ошибка при обновлении профиля';
       
-      // Можно использовать встроенный механизм обработки ошибок Redux
       console.error('Ошибка при обновлении профиля', err);
+      setPasswordError(errorMsg);
     }
   };
+  
 
   // Изменение пароля
   const handleChangePassword = async () => {
@@ -155,36 +158,35 @@ const Profile: React.FC = () => {
       setPasswordError('Пароли не совпадают');
       return;
     }
-
+  
     if (passwordForm.newPassword.length < 8) {
       setPasswordError('Новый пароль должен содержать не менее 8 символов');
       return;
     }
-
+  
     try {
-        // Используем Redux-thunk
-        const result = await dispatch(changeUserPassword({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword
-        })).unwrap();
-        
-        // Сброс формы и показ сообщения об успехе
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
-        });
-        setSuccessMessage('Пароль успешно изменен');
-      } catch (err) {
-        // Определяем сообщение об ошибке из полученного ответа
-        const errorMsg = typeof err === 'object' && err !== null 
+      // Используем UserService для смены пароля
+      const result = await UserService.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      
+      // Сброс формы и показ сообщения об успехе
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setSuccessMessage('Пароль успешно изменен');
+    } catch (err) {
+      const errorMsg = typeof err === 'object' && err !== null 
         ? ((err as any).message || 'Ошибка при изменении пароля') 
-          : 'Ошибка при изменении пароля';
-        
-        setPasswordError(errorMsg);
-        console.error('Ошибка при изменении пароля', err);
-      }
-    };
+        : 'Ошибка при изменении пароля';
+      
+      setPasswordError(errorMsg);
+      console.error('Ошибка при изменении пароля', err);
+    }
+  };
 
   if (!user) {
     return (

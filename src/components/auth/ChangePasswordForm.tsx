@@ -12,7 +12,6 @@ import {
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import UserService from '../../services/user.service';
-import AuthService from '../../services/auth.service';
 
 // Определим интерфейс для формы
 interface ChangePasswordFormValues {
