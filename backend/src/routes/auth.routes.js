@@ -1,15 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/auth.controller');
+const userController = require('../controllers/user.controller');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Существующие маршруты
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.post('/refresh', authController.refreshToken);
-router.post('/logout', authController.logout);
-
-// Новые маршруты для сброса пароля
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+router.post('/login', userController.login);
+router.post('/register', userController.register);
+router.post('/refresh', userController.refreshToken);
+router.post('/logout', userController.logout);
+router.post('/forgot-password', userController.forgotPassword);
+router.post('/reset-password', userController.resetPassword);
+router.put('/users/password', authMiddleware, userController.changePassword);
+router.put('/users/profile', authMiddleware, userController.updateProfile);
 
 module.exports = router;

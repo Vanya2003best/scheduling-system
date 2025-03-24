@@ -360,3 +360,87 @@ exports.refreshToken = async (req, res) => {
 exports.logout = (req, res) => {
   res.status(200).json({ message: 'Выход выполнен успешно' });
 };
+exports.updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, position, department } = req.body;
+    const userId = req.user.id; // Предполагаем, что middleware добавляет информацию о пользователе
+
+    // Найти связанного сотрудника
+    const employee = await Employee.findOne({ 
+      where: { user_id: userId } 
+    });
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Профиль сотрудника не найден' });
+    }
+
+    // Обновить данные сотрудника
+    await employee.update({
+      first_name: firstName,
+      last_name: lastName,
+      position: position,
+      department: department
+    });
+
+    // Вернуть обновленные данные
+    res.status(200).json({
+      message: 'Профиль успешно обновлен',
+      user: {
+        firstName: employee.first_name,
+        lastName: employee.last_name,
+        position: employee.position,
+        department: employee.department
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка при обновлении профиля:', error);
+    res.status(500).json({ 
+      error: 'Не удалось обновить профиль',
+      details: error.message 
+    });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id; // Предполагаем, что middleware добавляет информацию о пользователе
+
+    // Найти пользователя
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    // Проверить текущий пароль
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ error: 'Текущий пароль неверен' });
+    }
+
+    // Проверить длину нового пароля
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: 'Новый пароль должен содержать не менее 8 символов' 
+      });
+    }
+
+    // Хэшировать и обновить пароль
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({ 
+      password_hash: hashedPassword 
+    });
+
+    res.status(200).json({ 
+      message: 'Пароль успешно изменен' 
+    });
+  } catch (error) {
+    console.error('Ошибка при смене пароля:', error);
+    res.status(500).json({ 
+      error: 'Не удалось изменить пароль',
+      details: error.message 
+    });
+  }
+};  

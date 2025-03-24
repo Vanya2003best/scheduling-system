@@ -3,11 +3,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
-
+const userRoutes = require('./routes/userRoutes'); // adjust path as needed
 // Create Express app
 const app = express();
 
 // Middleware
+app.use('/api/v1', userRoutes);
 app.use(helmet()); // Security headers
 app.use(morgan('dev')); // Request logging
 app.use(cors({
