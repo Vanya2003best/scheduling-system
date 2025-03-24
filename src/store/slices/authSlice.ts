@@ -69,7 +69,8 @@ const authSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
-    builder
+    // Either remove this block if not needed
+    // Or add meaningful reducer cases
   }
 });
 
