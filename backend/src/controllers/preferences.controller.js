@@ -74,8 +74,8 @@ exports.getPreference = async (req, res) => {
         target_year: monthSettings.year
       },
       include: [
-        { model: WeekdayPreference },
-        { model: ExactDatePreference }
+        { model: WeekdayPreference, as: 'weekdayPreferences' },
+        { model: ExactDatePreference, as: 'exactDatePreferences' }
       ]
     });
     
@@ -202,22 +202,22 @@ exports.submitPreference = async (req, res) => {
     // Fetch complete preference with associations
     const completePreference = await SchedulingPreference.findByPk(result.id, {
       include: [
-        { model: WeekdayPreference },
-        { model: ExactDatePreference }
+        { model: WeekdayPreference, as: 'weekdayPreferences' },
+        { model: ExactDatePreference, as: 'exactDatePreferences' }
       ]
     });
     
-    // Format the response
+    // Затем нужно правильно обращаться к свойствам с использованием алиасов
     const formattedPreference = {
       id: completePreference.id,
       employeeId: completePreference.employee_id,
       targetMonth: completePreference.target_month,
       targetYear: completePreference.target_year,
-      weekdayPreferences: completePreference.WeekdayPreferences.map(wp => ({
+      weekdayPreferences: completePreference.weekdayPreferences.map(wp => ({
         dayOfWeek: wp.day_of_week,
         shiftPreference: wp.shift_preference
       })),
-      exactDatePreferences: completePreference.ExactDatePreferences.map(edp => ({
+      exactDatePreferences: completePreference.exactDatePreferences.map(edp => ({
         exactDate: edp.exact_date.toISOString().split('T')[0],
         startTime: edp.start_time,
         endTime: edp.end_time

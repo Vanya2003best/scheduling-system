@@ -93,7 +93,7 @@ const initDb = async () => {
     const hashedPassword = await bcrypt.hash('admin123', 10);
     const adminUser = await sequelize.models.User.create({
       email: 'admin@example.com',
-      password: hashedPassword,
+      password_hash: hashedPassword,
       role: 'admin',
       isActive: true,
       lastLogin: new Date()

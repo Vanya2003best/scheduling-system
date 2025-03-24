@@ -12,6 +12,15 @@ router.get('/available-months', preferencesController.getAvailableMonths);
 // Get preferences for a specific month
 router.get('/:monthId', preferencesController.getPreference);
 
+router.get('/debug-months', async (req, res) => {
+    try {
+      const months = await sequelize.models.MonthlyWorkingHours.findAll();
+      res.json(months);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
 // Submit preferences for a specific month
 router.post('/:monthId', preferencesController.submitPreference);
 
