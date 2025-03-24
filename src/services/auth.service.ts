@@ -58,6 +58,7 @@ const AuthService = {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
   },
+
   refreshToken: async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) {
@@ -81,6 +82,20 @@ const AuthService = {
     } catch (error) {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
+      throw error;
+    }
+  },
+
+  // Добавлен метод changePassword внутри объекта AuthService
+  changePassword: async (data: { 
+    currentPassword: string, 
+    newPassword: string 
+  }) => {
+    try {
+      const response = await api.post('/auth/change-password', data);
+      return response.data;
+    } catch (error: any) {
+      // Обработка ошибок
       throw error;
     }
   }

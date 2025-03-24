@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'; // Объединенный импорт React и useEffect
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -6,8 +6,10 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 
 // Components
+import Profile from './components/profile/Profile';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
+import ChangePasswordForm from './components/auth/ChangePasswordForm';
 import MainLayout from './components/layout/MainLayout';
 import PreferenceSubmission from './components/employee/PreferenceSubmission';
 import ScheduleViewer from './components/employee/ScheduleViewer';
@@ -15,7 +17,6 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import AuthService from './services/auth.service';
 
 // Placeholder components - will be replaced with actual components later
-<Route path="/register" element={<RegisterForm />} />
 const EmployeeDashboard = () => <div>Employee Dashboard</div>;
 const NotFound = () => <div>404 - Page Not Found</div>;
 
@@ -89,6 +90,8 @@ function App() {
               <Route path="dashboard" element={<EmployeeDashboard />} />
               <Route path="preferences" element={<PreferenceSubmission />} />
               <Route path="schedule" element={<ScheduleViewer />} />
+              <Route path="change-password" element={<ChangePasswordForm />} />
+              <Route path="profile" element={<Profile />} />
               
               {/* Admin routes */}
               <Route path="admin/dashboard" element={<AdminDashboard />} />
